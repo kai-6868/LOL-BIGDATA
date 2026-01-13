@@ -1,0 +1,34 @@
+spark:
+  app_name: "LoL_Match_Streaming"
+  master: "spark://spark-master:7077" # Docker internal hostname
+
+  # Spark configurations
+  config:
+    spark.driver.memory: "2g"
+    spark.executor.memory: "2g"
+    spark.executor.cores: "2"
+    spark.default.parallelism: "4"
+    spark.streaming.backpressure.enabled: "true"
+    spark.streaming.kafka.maxRatePerPartition: "100"
+
+kafka:
+  bootstrap_servers: "kafka:9092" # Docker internal hostname
+  topic: "lol_matches"
+  group_id: "spark_streaming_consumer"
+  auto_offset_reset: "latest"
+
+streaming:
+  batch_interval: 30 # seconds
+  window_duration: 300 # seconds (5 minutes)
+  slide_interval: 60 # seconds (1 minute)
+  checkpoint_location: "/opt/spark/work-dir/checkpoints/streaming" # Docker path
+
+elasticsearch:
+  hosts:
+    - "http://elasticsearch:9200" # Docker internal hostname
+  index_name: "lol_matches_stream"
+  mapping_file: "/opt/spark/work-dir/streaming-layer/config/es_mapping.json" # Docker path
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

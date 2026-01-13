@@ -1,0 +1,64 @@
+# Data Generator Configuration
+
+kafka:
+  bootstrap_servers: "localhost:29092" # External port for host connections
+  topic: "lol_matches"
+  acks: 1
+  retries: 3
+  compression_type: "gzip"
+
+generator:
+  interval_seconds: 0.5 # Generate 2 matches per second
+  mode: "continuous" # continuous or batch
+  batch_size: 100 # Only used in batch mode
+
+data:
+  champions:
+    - "Ahri"
+    - "Yasuo"
+    - "Zed"
+    - "Jinx"
+    - "Thresh"
+    - "Lee Sin"
+    - "Vayne"
+    - "Lux"
+    - "Ezreal"
+    - "Katarina"
+    - "Master Yi"
+    - "Darius"
+    - "Garen"
+    - "Annie"
+    - "Ashe"
+    - "Miss Fortune"
+    - "Lucian"
+    - "Jhin"
+    - "Kai'Sa"
+    - "Xayah"
+    - "Rakan"
+    - "Blitzcrank"
+    - "Leona"
+    - "Nautilus"
+    - "Morgana"
+    - "Janna"
+    - "Soraka"
+    - "Sona"
+    - "Nami"
+    - "Braum"
+    - "Alistar"
+    - "Taric"
+    - "Bard"
+    - "Pyke"
+    - "Yuumi"
+    - "Senna"
+
+  positions:
+    - "TOP"
+    - "JUNGLE"
+    - "MIDDLE"
+    - "BOTTOM"
+    - "UTILITY"
+
+logging:
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR
+  format: "[%(asctime)s] %(levelname)s - %(message)s"
+  file: "logs/generator.log"

@@ -1,0 +1,154 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Data files
+*.csv
+*.parquet
+*.json
+*.log
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model files
+*.pkl
+*.joblib
+*.h5
+models/*
+!models/.gitkeep
+
+# Logs
+logs/
+*.log
+*.out
+
+# Checkpoints
+checkpoints/
+*checkpoint*
+
+# Docker
+.dockerignore
+
+# Kafka
+kafka-logs/
+
+# HDFS
+hadoop-data/
+
+# Elasticsearch
+elasticsearch-data/
+
+# Cassandra
+cassandra-data/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# MLflow
+mlruns/
+
+# Backups
+backups/
+
+# Generated documentation
+docs/_build/
+docs/.doctrees/
+
+# Compiled translations
+*.mo
+*.pot
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Prometheus & Grafana
+prometheus_data/
+grafana_data/
