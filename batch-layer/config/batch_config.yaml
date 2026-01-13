@@ -1,0 +1,34 @@
+# Kafka Configuration
+kafka:
+  bootstrap_servers: "localhost:29092" # External port for host machine
+  topic: "lol_matches"
+  group_id: "batch_consumer_group"
+  auto_offset_reset: "earliest"
+  max_poll_records: 50 # Batch size
+  enable_auto_commit: false # Manual commit for reliability
+
+# HDFS Configuration
+hdfs:
+  namenode_url: "http://localhost:9870" # WebHDFS external port
+  base_path: "/data/lol_matches"
+  file_format: "parquet"
+  compression: "snappy"
+  partition_by: "date" # YYYY/MM/DD
+
+# Batch Processing
+batch:
+  size: 50 # Messages per batch
+  timeout: 60 # Seconds to wait for full batch
+  checkpoint_dir: "./checkpoints/batch"
+  log_dir: "./batch-layer/logs"
+
+# Retry Policy
+retry:
+  max_attempts: 3
+  backoff_seconds: 5
+
+# Monitoring
+monitoring:
+  log_level: "INFO"
+  metrics_enabled: true
+  healthcheck_interval: 60 # Seconds
