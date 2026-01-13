@@ -133,6 +133,10 @@ mlruns/
 # Backups
 backups/
 
+# Docker images backup (too large for Git)
+*.tar
+bigbig-stack-snapshot.tar
+
 # Generated documentation
 docs/_build/
 docs/.doctrees/

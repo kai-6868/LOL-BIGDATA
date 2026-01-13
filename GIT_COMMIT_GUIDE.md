@@ -2,11 +2,19 @@
 
 ## ✅ Đã Backup
 
+### Code Backup
 Backup location: `backups/backup_20260113_140929/`
 - ML models: ✅ (1 .pkl file)
 - Checkpoints metadata: ✅
 - Configurations: ✅ (6 files)
 - System state: ✅ (system_state.json)
+
+### Docker Images Backup ⭐ NEW
+File: `bigbig-stack-snapshot.tar`
+- Size: 2.96 GB (compressed from ~15 GB images)
+- Images: 11 containers (Kafka, Spark, Hadoop, Cassandra, ES, Kibana, etc.)
+- Time: 192 seconds (~3 minutes)
+- Restore: `docker load -i bigbig-stack-snapshot.tar`
 
 ## 📋 Những gì sẽ commit
 
@@ -31,6 +39,7 @@ Backup location: `backups/backup_20260113_140929/`
 - `data/` - Data files (too large)
 - `backups/` - Backup directory
 - `__pycache__/` - Python cache
+- `bigbig-stack-snapshot.tar` - Docker images backup (2.96 GB)
 
 ## 🚀 Commit Commands
 
@@ -143,11 +152,15 @@ python ml-layer/src/predict.py
 - ✅ Clone to new location và test restore
 - ✅ Verify Docker compose up works
 - ✅ Test data generation → ML pipeline
+- ✅ Keep Docker backup safe (bigbig-stack-snapshot.tar - 2.96 GB)
 
 ## 🎯 Next Steps After Push
 
 1. **Tag release**: `git tag -a v1.0 -m "Phase 5 Complete - ML Layer"`
-2. **Create branch**: `git checkout -b phase6-monitoring` (nếu muốn tiếp tục)
+2. **Create branch*s**: 
+   - Code backup: `backups/backup_20260113_140929/`
+   - Docker backup: `bigbig-stack-snapshot.tar` (2.96 GB)
+   - Store on external HDD, Google Drive, or NAS
 3. **Archive backup**: Lưu `backups/` folder riêng (Google Drive, external HDD)
 
 ## 📝 Notes
