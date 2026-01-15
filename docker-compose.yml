@@ -76,7 +76,7 @@ services:
       - lol-network
 
   # =========================
-  # HADOOP DATANODE
+  # HADOOP DATANODE 1
   # =========================
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -87,6 +87,21 @@ services:
       CORE_CONF_fs_defaultFS: hdfs://namenode:9000
     volumes:
       - hadoop_datanode:/hadoop/dfs/data
+    networks:
+      - lol-network
+
+  # =========================
+  # HADOOP DATANODE 2
+  # =========================
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    depends_on:
+      - namenode
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    volumes:
+      - hadoop_datanode2:/hadoop/dfs/data
     networks:
       - lol-network
 
@@ -279,6 +294,7 @@ networks:
 volumes:
   hadoop_namenode:
   hadoop_datanode:
+  hadoop_datanode2:
   kafka_data:
   es_data:
   cassandra_data:
