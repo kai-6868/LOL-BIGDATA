@@ -156,3 +156,6 @@ dmypy.json
 # Prometheus & Grafana
 prometheus_data/
 grafana_data/
+
+# .venv/
+.venv/
