@@ -246,6 +246,29 @@ services:
     networks:
       - lol-network
 
+  # =========================
+  # PYSPARK WORKER
+  # =========================
+  pyspark-worker:
+    image: python:3.11-slim
+    container_name: pyspark-worker
+    volumes:
+      - ./batch-layer:/opt/batch-layer
+    networks:
+      - lol-network
+    depends_on:
+      - namenode
+      - cassandra
+    working_dir: /opt/batch-layer
+    command: >
+      bash -c "
+      apt-get update -qq &&
+      apt-get install -y -qq default-jre-headless procps &&
+      pip install --quiet --no-cache-dir pyspark==3.5.0 cassandra-driver pyyaml pandas pyarrow &&
+      echo '✅ PySpark worker ready!' &&
+      tail -f /dev/null
+      "
+
 # =========================
 # NETWORKS & VOLUMES
 # =========================

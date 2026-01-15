@@ -346,11 +346,20 @@ def main():
                        help='Path to configuration file')
     parser.add_argument('--batches', type=int, default=None,
                        help='Number of batches to process (None = infinite)')
+    parser.add_argument('--batch-size', type=int, default=None,
+                       help='Number of messages per batch (overrides config)')
     
     args = parser.parse_args()
     
-    # Create and run consumer
+    # Create consumer
     consumer = BatchConsumer(config_path=args.config)
+    
+    # Override batch size if provided
+    if args.batch_size is not None:
+        consumer.config['batch']['size'] = args.batch_size
+        consumer.logger.info(f"Batch size overridden to: {args.batch_size}")
+    
+    # Run consumer
     consumer.run(num_batches=args.batches)
 
 

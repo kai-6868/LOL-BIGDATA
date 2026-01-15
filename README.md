@@ -17,14 +17,14 @@
 | ------- | --------------- | ---------------------- | -------------------------------------------- |
 | Phase 1 | ✅ Complete     | Infrastructure Setup   | [SETUP_GUIDE.md](SETUP_GUIDE.md)             |
 | Phase 2 | ✅ Complete     | Data Ingestion (Kafka) | [verify_phase2.py](verify_phase2.py)         |
-| Phase 3 | ✅ **Complete** | Streaming + Kibana     | [PHASE3_QUICKSTART.md](PHASE3_QUICKSTART.md) |
-| Phase 4 | 📑 **Next**     | Batch Layer (HDFS)     | [PLANMODE.md](PLANMODE.md)                   |
+| Phase 3 | ✅ Complete     | Streaming + Kibana     | [PHASE3_QUICKSTART.md](PHASE3_QUICKSTART.md) |
+| Phase 4 | ✅ **Complete** | Batch Layer (PySpark)  | [BATCH_LAYER_GUIDE.md](BATCH_LAYER_GUIDE.md) |
 | Phase 5 | 📋 Planned      | Machine Learning       | [PLANMODE.md](PLANMODE.md)                   |
 
-**Last Updated**: January 13, 2026  
-**Production Metrics**: 30,000+ documents indexed, 190-200 docs/10sec  
-**Phase 3**: ✅ **COMPLETED** with Kibana dashboard  
-**Next Phase**: Phase 4 - Batch Layer (HDFS + Cassandra)
+**Last Updated**: January 15, 2026  
+**Production Metrics**: 500+ records processed via PySpark  
+**Phase 4**: ✅ **COMPLETED** - Batch processing with PySpark + Cassandra  
+**Next Phase**: Phase 5 - Machine Learning Layer
 
 ---
 

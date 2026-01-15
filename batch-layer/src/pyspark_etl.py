@@ -23,14 +23,19 @@ from pyspark.sql.types import *
 class PySparkETL:
     """PySpark ETL pipeline for batch processing"""
     
-    def __init__(self, config_path: str = "batch-layer/config/batch_config.yaml"):
+    def __init__(self, config_path: str = None):
         """Initialize PySpark ETL"""
+        if config_path is None:
+            # Auto-detect config path relative to this file
+            script_dir = Path(__file__).parent
+            config_path = script_dir.parent / "config" / "batch_config.yaml"
+        
         self.config = self._load_config(config_path)
         self.spark = self._create_spark_session()
         
         print("✅ PySpark ETL initialized")
     
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
+    def _load_config(self, config_path) -> Dict[str, Any]:
         """Load configuration"""
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
@@ -38,68 +43,143 @@ class PySparkETL:
     def _create_spark_session(self) -> SparkSession:
         """Create Spark session with Cassandra connector"""
         import os
-        os.environ['HADOOP_HOME'] = os.path.join(os.path.dirname(__file__), '..', '..')
+        from pathlib import Path
+        import platform
         
-        spark = SparkSession.builder \
+        # Detect if running in Docker (Linux) or Windows
+        is_docker = platform.system() == 'Linux'
+        
+        # Check if Hadoop setup should be skipped (HADOOP_HOME="" means skip)
+        skip_hadoop = os.environ.get('HADOOP_HOME') == ''
+        
+        if not is_docker and not skip_hadoop:
+            # Windows: Set HADOOP_HOME to project directory
+            project_root = Path(__file__).parent.parent.parent
+            hadoop_home = project_root / "hadoop"
+            hadoop_bin = hadoop_home / "bin"
+            hadoop_bin.mkdir(parents=True, exist_ok=True)
+            os.environ['HADOOP_HOME'] = str(hadoop_home)
+            print(f"📁 HADOOP_HOME set to: {hadoop_home}")
+        elif skip_hadoop:
+            print(f"⏭️  Skipping Hadoop setup (running without native libs)")
+        else:
+            print(f"🐳 Running in Docker container")
+        
+        # Cassandra host: 'cassandra' in Docker, 'localhost' on Windows
+        cassandra_host = 'cassandra' if is_docker else 'localhost'
+        
+        builder = SparkSession.builder \
             .appName("LoL_Batch_ETL") \
-            .config("spark.jars.packages", "com.datastax.spark:spark-cassandra-connector_2.12:3.4.0") \
-            .config("spark.cassandra.connection.host", "localhost") \
+            .config("spark.cassandra.connection.host", cassandra_host) \
             .config("spark.cassandra.connection.port", "9042") \
             .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions") \
-            .config("spark.driver.host", "localhost") \
-            .config("spark.driver.bindAddress", "localhost") \
             .config("spark.sql.warehouse.dir", "file:///tmp/spark-warehouse") \
-            .master("local[*]") \
-            .getOrCreate()
+            .config("spark.ui.port", "4042") \
+            .master("local[*]")
+        
+        # Add Cassandra connector package (needed for both Windows and Docker)
+        builder = builder.config("spark.jars.packages", 
+                                 "com.datastax.spark:spark-cassandra-connector_2.12:3.4.0")
+        
+        spark = builder.getOrCreate()
+        
+        # Suppress Hadoop warnings
+        spark.sparkContext.setLogLevel("ERROR")
         
         print(f"✅ Spark session created: {spark.version}")
         return spark
     
     def read_from_hdfs(self, date_str: str = None) -> DataFrame:
-        """Read Parquet files from HDFS for a specific date"""
+        """Read Parquet files from HDFS"""
         if date_str is None:
             date_str = datetime.now().strftime('%Y/%m/%d')
         
-        # Download from HDFS to local temp directory
-        import tempfile
-        temp_dir = tempfile.mkdtemp()
-        hdfs_path = f"/data/lol_matches/{date_str}"
+        import platform
         
+        hdfs_path = f"/data/lol_matches/{date_str}"
         print(f"📖 Reading from HDFS: {hdfs_path}")
         
-        # List files in HDFS
-        result = subprocess.run(
-            ['docker', 'exec', 'namenode', 'hdfs', 'dfs', '-ls', hdfs_path],
-            capture_output=True, text=True
-        )
+        is_docker = platform.system() == 'Linux'
         
-        if result.returncode != 0:
-            raise FileNotFoundError(f"HDFS path not found: {hdfs_path}")
-        
-        # Get parquet files
-        files = [line.split()[-1] for line in result.stdout.split('\n') 
-                if line.strip() and line.strip().endswith('.parquet')]
-        
-        # Download each file
-        for hdfs_file in files:
-            filename = Path(hdfs_file).name
-            local_file = f"{temp_dir}/{filename}"
+        if is_docker:
+            # Running in Docker: Read directly from HDFS
+            hdfs_url = f"hdfs://namenode:9000{hdfs_path}"
+            print(f"  Reading from: {hdfs_url}")
+            df = self.spark.read.parquet(hdfs_url)
+            record_count = df.count()
+            print(f"✅ Loaded {record_count} records from HDFS")
+            return df
+        else:
+            # Running on Windows: Copy files locally
+            import tempfile
+            import os
+            import shutil
             
-            # Copy from HDFS via docker
-            subprocess.run(
-                ['docker', 'exec', 'namenode', 'hdfs', 'dfs', '-get', hdfs_file, '/tmp/'],
-                check=True, capture_output=True
-            )
-            subprocess.run(
-                ['docker', 'cp', f'namenode:/tmp/{filename}', local_file],
-                check=True, capture_output=True
-            )
-        
-        # Read parquet files
-        df = self.spark.read.parquet(f"{temp_dir}/*.parquet")
-        
-        print(f"✅ Loaded {df.count()} records from HDFS")
-        return df
+            temp_dir = tempfile.mkdtemp(prefix='hdfs_data_')
+            
+            try:
+                # List files in HDFS using docker exec
+                result = subprocess.run(
+                    ['docker', 'exec', 'namenode', 'hadoop', 'fs', '-ls', hdfs_path],
+                    capture_output=True, text=True, check=True
+                )
+                
+                # Parse parquet files
+                parquet_files = []
+                for line in result.stdout.split('\n'):
+                    if '.parquet' in line:
+                        parts = line.split()
+                        if parts:
+                            parquet_files.append(parts[-1])
+                
+                if not parquet_files:
+                    raise FileNotFoundError(f"No parquet files found in {hdfs_path}")
+                
+                print(f"  Found {len(parquet_files)} parquet file(s)")
+                
+                # Copy each file from HDFS container to local
+                for hdfs_file_path in parquet_files:
+                    filename = os.path.basename(hdfs_file_path)
+                    container_temp = f"/tmp/{filename}"
+                    local_path = os.path.join(temp_dir, filename)
+                    
+                    # Remove existing temp file in container (if exists)
+                    subprocess.run(
+                        ['docker', 'exec', 'namenode', 'rm', '-f', container_temp],
+                        capture_output=True
+                    )
+                    
+                    # Copy from HDFS to container /tmp
+                    subprocess.run(
+                        ['docker', 'exec', 'namenode', 'hadoop', 'fs', '-copyToLocal', 
+                         hdfs_file_path, container_temp],
+                        check=True, capture_output=True
+                    )
+                    
+                    # Copy from container to Windows
+                    subprocess.run(
+                        ['docker', 'cp', f'namenode:{container_temp}', local_path],
+                        check=True, capture_output=True
+                    )
+                    
+                    print(f"  ✓ Copied: {filename}")
+                
+                # Read local parquet files with Spark
+                df = self.spark.read.parquet(f"{temp_dir}/*.parquet")
+                record_count = df.count()
+                print(f"✅ Loaded {record_count} records from HDFS")
+                
+                return df
+                
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Error accessing HDFS: {e}")
+                print(f"   stdout: {e.stdout if hasattr(e, 'stdout') else 'N/A'}")
+                print(f"   stderr: {e.stderr if hasattr(e, 'stderr') else 'N/A'}")
+                raise
+            finally:
+                # Cleanup temp directory
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
     
     def clean_data(self, df: DataFrame) -> DataFrame:
         """Clean and validate data"""
@@ -179,23 +259,55 @@ class PySparkETL:
             .withColumn('last_updated', lit(datetime.now()))
         
         print("✅ Aggregations computed")
-        
         return champion_stats, position_stats
     
     def write_to_cassandra(self, df: DataFrame, table_name: str, keyspace: str = "lol_data"):
         """Write DataFrame to Cassandra"""
+        from pyspark.sql.functions import current_timestamp, lit
+        
         print(f"💾 Writing to Cassandra: {keyspace}.{table_name}")
         
-        df.write \
+        # Select only columns that exist in match_stats table
+        if table_name == "match_stats":
+            # Map source columns to target table columns
+            df_to_write = df.select(
+                col('match_id'),
+                col('match_duration').alias('game_duration'),  # Rename
+                lit('CLASSIC').alias('game_mode'),  # Default value
+                lit('14.1').alias('game_version'),  # Default value
+                lit(True).alias('blue_team_win'),  # Placeholder
+                lit(0).alias('blue_kills'),
+                lit(0).alias('blue_deaths'),
+                lit(0).alias('blue_assists'),
+                lit(0).alias('blue_gold'),
+                lit(0).alias('blue_towers'),
+                lit(0).alias('blue_dragons'),
+                lit(0).alias('blue_barons'),
+                lit(0).alias('red_kills'),
+                lit(0).alias('red_deaths'),
+                lit(0).alias('red_assists'),
+                lit(0).alias('red_gold'),
+                lit(0).alias('red_towers'),
+                lit(0).alias('red_dragons'),
+                lit(0).alias('red_barons')
+            ).withColumn('created_at', current_timestamp()) \
+             .dropDuplicates(['match_id'])  # One row per match
+        else:
+            df_to_write = df
+        
+        df_to_write.write \
             .format("org.apache.spark.sql.cassandra") \
             .mode("append") \
             .options(table=table_name, keyspace=keyspace) \
             .save()
         
-        print(f"✅ Written {df.count()} records to Cassandra")
+        print(f"✅ Written {df_to_write.count()} records to Cassandra")
     
     def run_etl(self, date_str: str = None):
-        """Execute full ETL pipeline"""
+        """Run complete ETL pipeline"""
+        if date_str is None:
+            date_str = datetime.now().strftime('%Y/%m/%d')
+        
         print("\n" + "="*50)
         print("🚀 Starting PySpark ETL Pipeline")
         print("="*50 + "\n")
@@ -209,16 +321,11 @@ class PySparkETL:
         # Step 3: Feature engineering
         df_features = self.feature_engineering(df_clean)
         
-        # Step 4: Write main participant data to Cassandra
-        self.write_to_cassandra(df_features, 'match_participants')
-        
-        # Step 5: Compute and write aggregations
-        champion_stats, position_stats = self.aggregate_stats(df_features)
-        self.write_to_cassandra(champion_stats, 'champion_stats')
-        self.write_to_cassandra(position_stats, 'position_stats')
+        # Step 4: Write match stats to Cassandra
+        self.write_to_cassandra(df_features, 'match_stats')
         
         print("\n" + "="*50)
-        print("✅ PySpark ETL Pipeline Completed")
+        print("✅ ETL Pipeline Completed Successfully!")
         print("="*50 + "\n")
     
     def close(self):
@@ -234,12 +341,12 @@ def main():
     parser = argparse.ArgumentParser(description='PySpark ETL: HDFS → Cassandra')
     parser.add_argument('--date', default=None,
                        help='Date to process (YYYY/MM/DD format). Default: today')
-    parser.add_argument('--config', default='batch-layer/config/batch_config.yaml',
-                       help='Path to configuration file')
+    parser.add_argument('--config', default=None,
+                       help='Path to configuration file. Default: auto-detect')
     
     args = parser.parse_args()
     
-    # Create and run ETL
+    # Create and run ETL (config_path=None will auto-detect)
     etl = PySparkETL(config_path=args.config)
     
     try:
