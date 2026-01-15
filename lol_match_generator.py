@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # Config
-BOOTSTRAP_SERVERS = 'localhost:29092'  # External port for host connections
+BOOTSTRAP_SERVERS = ['localhost:9092', 'localhost:9093', 'localhost:9094']  # Kafka cluster
 TOPIC_NAME = 'lol_matches'  # Dùng topic cố định cho streaming
 INTERVAL_SECONDS = 0.5  # Sinh 1 match mỗi 0.5 giây
 
