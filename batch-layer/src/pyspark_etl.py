@@ -263,45 +263,72 @@ class PySparkETL:
     
     def write_to_cassandra(self, df: DataFrame, table_name: str, keyspace: str = "lol_data"):
         """Write DataFrame to Cassandra"""
-        from pyspark.sql.functions import current_timestamp, lit
+        from pyspark.sql.functions import current_timestamp, sum as spark_sum
         
         print(f"💾 Writing to Cassandra: {keyspace}.{table_name}")
         
-        # Select only columns that exist in match_stats table
-        if table_name == "match_stats":
-            # Map source columns to target table columns
+        if table_name == "player_performance":
+            # Write player-level data directly
             df_to_write = df.select(
                 col('match_id'),
-                col('match_duration').alias('game_duration'),  # Rename
-                lit('CLASSIC').alias('game_mode'),  # Default value
-                lit('14.1').alias('game_version'),  # Default value
-                lit(True).alias('blue_team_win'),  # Placeholder
-                lit(0).alias('blue_kills'),
-                lit(0).alias('blue_deaths'),
-                lit(0).alias('blue_assists'),
-                lit(0).alias('blue_gold'),
-                lit(0).alias('blue_towers'),
-                lit(0).alias('blue_dragons'),
-                lit(0).alias('blue_barons'),
-                lit(0).alias('red_kills'),
-                lit(0).alias('red_deaths'),
-                lit(0).alias('red_assists'),
-                lit(0).alias('red_gold'),
-                lit(0).alias('red_towers'),
-                lit(0).alias('red_dragons'),
-                lit(0).alias('red_barons')
-            ).withColumn('created_at', current_timestamp()) \
-             .dropDuplicates(['match_id'])  # One row per match
+                col('summoner_name'),
+                col('champion_name'),
+                col('position'),
+                col('team_id'),
+                col('win'),
+                col('kills'),
+                col('deaths'),
+                col('assists'),
+                col('kda'),
+                col('gold_earned'),
+                col('total_damage'),
+                col('cs'),
+                col('vision_score'),
+                col('match_timestamp'),
+                col('match_duration'),
+                col('match_date')
+            )
+            
+        elif table_name == "match_summary":
+            # Aggregate to match level
+            df_to_write = df.groupBy('match_id', 'match_timestamp', 'match_duration', 'match_date') \
+                .agg(
+                    # Blue team (team_id = 100)
+                    spark_sum(when(col('team_id') == 100, col('kills')).otherwise(0)).alias('blue_kills'),
+                    spark_sum(when(col('team_id') == 100, col('deaths')).otherwise(0)).alias('blue_deaths'),
+                    spark_sum(when(col('team_id') == 100, col('assists')).otherwise(0)).alias('blue_assists'),
+                    spark_sum(when(col('team_id') == 100, col('gold_earned')).otherwise(0)).alias('blue_gold'),
+                    spark_sum(when(col('team_id') == 100, col('total_damage')).otherwise(0)).alias('blue_damage'),
+                    # Red team (team_id = 200)
+                    spark_sum(when(col('team_id') == 200, col('kills')).otherwise(0)).alias('red_kills'),
+                    spark_sum(when(col('team_id') == 200, col('deaths')).otherwise(0)).alias('red_deaths'),
+                    spark_sum(when(col('team_id') == 200, col('assists')).otherwise(0)).alias('red_assists'),
+                    spark_sum(when(col('team_id') == 200, col('gold_earned')).otherwise(0)).alias('red_gold'),
+                    spark_sum(when(col('team_id') == 200, col('total_damage')).otherwise(0)).alias('red_damage'),
+                    # Determine winner (check if any blue team player won)
+                    spark_sum(when((col('team_id') == 100) & (col('win') == True), 1).otherwise(0)).alias('blue_wins'),
+                    count('*').alias('total_players')
+                ) \
+                .withColumn('blue_team_win', col('blue_wins') > 0) \
+                .withColumn('created_at', current_timestamp()) \
+                .select(
+                    'match_id', 'match_timestamp', 'match_duration', 'match_date',
+                    'blue_team_win',
+                    'blue_kills', 'blue_deaths', 'blue_assists', 'blue_gold', 'blue_damage',
+                    'red_kills', 'red_deaths', 'red_assists', 'red_gold', 'red_damage',
+                    'total_players', 'created_at'
+                )
         else:
             df_to_write = df
         
+        # Write to Cassandra
         df_to_write.write \
             .format("org.apache.spark.sql.cassandra") \
             .mode("append") \
             .options(table=table_name, keyspace=keyspace) \
             .save()
         
-        print(f"✅ Written {df_to_write.count()} records to Cassandra")
+        print(f"✅ Written {df_to_write.count()} records to {table_name}")
     
     def run_etl(self, date_str: str = None):
         """Run complete ETL pipeline"""
@@ -317,15 +344,24 @@ class PySparkETL:
         
         # Step 2: Clean data
         df_clean = self.clean_data(df_raw)
+
+        print(df_clean.show(5))
         
         # Step 3: Feature engineering
         df_features = self.feature_engineering(df_clean)
         
-        # Step 4: Write match stats to Cassandra
-        self.write_to_cassandra(df_features, 'match_stats')
+        # Step 4: Write to player_performance table (player-level data)
+        print("\n📊 Writing player-level data...")
+        self.write_to_cassandra(df_features, 'player_performance')
+        
+        # Step 5: Write to match_summary table (aggregated match data)
+        print("\n📊 Writing match-level data...")
+        self.write_to_cassandra(df_features, 'match_summary')
         
         print("\n" + "="*50)
         print("✅ ETL Pipeline Completed Successfully!")
+        print("   - player_performance: Player stats per match")
+        print("   - match_summary: Aggregated team stats")
         print("="*50 + "\n")
     
     def close(self):

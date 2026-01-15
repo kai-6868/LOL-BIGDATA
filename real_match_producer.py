@@ -7,6 +7,7 @@ import json
 import time
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add data-ingestion to path
 sys.path.insert(0, str(Path(__file__).parent / 'data-ingestion'))
@@ -53,16 +54,13 @@ class RealMatchProducer:
         # Transformer
         self.transformer = MatchTransformer()
         
-        # Kafka producer
-        try:
-            self.producer = KafkaProducer(
-                bootstrap_servers='localhost:29092',
-                value_serializer=lambda v: json.dumps(v).encode('utf-8')
-            )
-            logger.info("✅ Kafka producer connected")
-        except Exception as e:
-            logger.error(f"❌ Failed to connect to Kafka: {e}")
-            raise
+        # Kafka producer (simple config like lol_match_generator)
+        self.producer = KafkaProducer(
+            bootstrap_servers='localhost:29092',
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+        
+        logger.info("✅ Kafka producer connected")
         
         # Track processed matches
         self.processed_matches = set()

@@ -1,5 +1,5 @@
 -- init_cassandra.cql
--- Cassandra Schema Initialization for LoL Match Data
+-- Cassandra Schema for Real LoL Match Data
 
 -- Create Keyspace
 CREATE KEYSPACE IF NOT EXISTS lol_data
@@ -8,60 +8,58 @@ WITH replication = {
   'replication_factor': 1
 };
 
--- Use Keyspace
 USE lol_data;
 
--- Create Table for Match Participants
-CREATE TABLE IF NOT EXISTS match_participants (
-  match_id UUID,
-  player_id INT,
-  champion TEXT,
-  role TEXT,
-  team INT,
+-- Table 1: Player Performance (per player per match)
+CREATE TABLE IF NOT EXISTS player_performance (
+  match_id TEXT,
+  summoner_name TEXT,
+  champion_name TEXT,
+  position TEXT,
+  team_id INT,
+  win BOOLEAN,
   kills INT,
   deaths INT,
   assists INT,
+  kda DOUBLE,
   gold_earned INT,
-  damage_dealt INT,
+  total_damage INT,
   cs INT,
   vision_score INT,
-  win BOOLEAN,
-  timestamp TIMESTAMP,
-  PRIMARY KEY ((match_id), player_id)
-) WITH CLUSTERING ORDER BY (player_id ASC);
+  match_timestamp BIGINT,
+  match_duration INT,
+  match_date TEXT,
+  PRIMARY KEY ((match_id), summoner_name)
+) WITH CLUSTERING ORDER BY (summoner_name ASC);
 
-CREATE INDEX IF NOT EXISTS idx_champion ON match_participants (champion);
-CREATE INDEX IF NOT EXISTS idx_timestamp ON match_participants (timestamp);
-CREATE INDEX IF NOT EXISTS idx_role ON match_participants (role);
+CREATE INDEX IF NOT EXISTS idx_player_champion ON player_performance (champion_name);
+CREATE INDEX IF NOT EXISTS idx_player_position ON player_performance (position);
+CREATE INDEX IF NOT EXISTS idx_player_date ON player_performance (match_date);
 
--- Create Table for Match Stats (aggregated match-level data)
-CREATE TABLE IF NOT EXISTS match_stats (
+-- Table 2: Match Summary (aggregated per match)
+CREATE TABLE IF NOT EXISTS match_summary (
   match_id TEXT PRIMARY KEY,
-  game_duration INT,
-  game_mode TEXT,
-  game_version TEXT,
+  match_timestamp BIGINT,
+  match_duration INT,
+  match_date TEXT,
   blue_team_win BOOLEAN,
   blue_kills INT,
   blue_deaths INT,
   blue_assists INT,
-  blue_gold INT,
-  blue_towers INT,
-  blue_dragons INT,
-  blue_barons INT,
+  blue_gold BIGINT,
+  blue_damage BIGINT,
   red_kills INT,
   red_deaths INT,
   red_assists INT,
-  red_gold INT,
-  red_towers INT,
-  red_dragons INT,
-  red_barons INT,
+  red_gold BIGINT,
+  red_damage BIGINT,
+  total_players INT,
   created_at TIMESTAMP
 );
 
--- Create Index on match_stats
-CREATE INDEX IF NOT EXISTS idx_match_mode ON match_stats (game_mode);
-CREATE INDEX IF NOT EXISTS idx_match_created ON match_stats (created_at);
+CREATE INDEX IF NOT EXISTS idx_summary_date ON match_summary (match_date);
+CREATE INDEX IF NOT EXISTS idx_summary_timestamp ON match_summary (created_at);
 
 -- Verify Schema
-DESCRIBE TABLE match_participants;
-DESCRIBE TABLE match_stats;
+DESCRIBE TABLE player_performance;
+DESCRIBE TABLE match_summary;
