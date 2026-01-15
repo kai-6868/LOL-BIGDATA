@@ -94,7 +94,7 @@ services:
   # SPARK MASTER
   # =========================
   spark-master:
-    image: apache/spark:3.5.0
+    image: spark-custom:3.5.0
     container_name: spark-master
     hostname: spark-master
     ports:
@@ -125,7 +125,7 @@ services:
   # SPARK WORKER
   # =========================
   spark-worker:
-    image: apache/spark:3.5.0
+    image: spark-custom:3.5.0
     container_name: spark-worker
     hostname: spark-worker
     depends_on:

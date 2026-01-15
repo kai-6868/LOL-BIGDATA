@@ -58,7 +58,8 @@ class ElasticsearchIndexer:
             self.es = Elasticsearch(
                 hosts=self.hosts,
                 verify_certs=False,
-                request_timeout=30
+                request_timeout=30,
+                meta_header=False
             )
             
             # Test connection

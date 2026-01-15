@@ -242,6 +242,7 @@ class SparkStreamingConsumer:
                 .option("kafka.bootstrap.servers", bootstrap_servers) \
                 .option("subscribe", kafka_config['topic']) \
                 .option("startingOffsets", kafka_config['auto_offset_reset']) \
+                .option("failOnDataLoss", "false") \
                 .load()
             
             # Parse JSON data

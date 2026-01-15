@@ -5,11 +5,6 @@ echo "=================================================="
 echo "Submitting Spark Streaming Job to Docker Cluster"
 echo "=================================================="
 
-# Install Python dependencies in Spark container first
-echo "Installing Python dependencies..."
-docker exec spark-master pip install pyyaml elasticsearch kafka-python
-
-# Submit Spark job
 echo "Submitting job..."
 docker exec spark-master /opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
@@ -17,11 +12,9 @@ docker exec spark-master /opt/spark/bin/spark-submit \
   --driver-memory 2g \
   --executor-memory 2g \
   --executor-cores 2 \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
-  --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" \
-  --conf spark.executor.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" \
   --conf spark.streaming.backpressure.enabled=true \
   --conf spark.streaming.kafka.maxRatePerPartition=100 \
+  --conf spark.pyspark.python=python3 \
   /opt/spark/work-dir/streaming-layer/src/spark_streaming_consumer.py
 
 echo "=================================================="
