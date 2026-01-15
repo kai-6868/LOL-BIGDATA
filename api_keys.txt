@@ -1,0 +1,4 @@
+# Riot API Keys
+# Add your keys here, one per line
+
+RGAPI-0cf7692e-678c-4e67-98c4-afe2df7f74d2
